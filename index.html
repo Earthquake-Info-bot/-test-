@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[ws]地震情報ビューアーv2.1.3(test)</title>
+<title>[ws]地震情報ビューアーv2.1.4(test)</title>
 <style>
 body {
   font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
@@ -382,7 +382,7 @@ function stopBlink() {
 
 function updateStatusText() {
   const dot = dotVisible ? "●" : "　"; // ← 全角スペースでズレ防止
-  ws_statusEl.textContent = `WebSocket接続中${dot}`;
+  ws_statusEl.textContent = `WebSocket接続完了/情報待機中${dot}`;
 }
   
 let ws;
@@ -392,7 +392,7 @@ function connectWS() {
   //ws = new WebSocket("wss://api-realtime-sandbox.p2pquake.net/v2/ws");
   
   ws.onopen = () => {
-    console.log("[WS] Connected");
+    console.log("[WebSocket]Connected");
     startBlink();
   };
 
@@ -426,13 +426,13 @@ function connectWS() {
   ws.onerror = (err) => {
     console.error("[WS] Error:", err);
     stopBlink();
-    ws_statusEl.textContent = "WebSocketエラー発生（自動再接続待ち）";
+    ws_statusEl.textContent = "WebSocketエラー（自動再接続待機中）";
   };
 
   ws.onclose = () => {
     console.warn("[WS] Closed. Reconnecting...");
     stopBlink();
-    ws_statusEl.textContent = "WS 切断 → 再接続中…";
+    ws_statusEl.textContent = "WebSocket切断・再接続中…";
 
     // 3秒後に再接続（安全）
     setTimeout(connectWS, 1500);
