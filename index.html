@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[a]地震情報ビューアーv1.12.2</title>
+<style>
+body {
+  font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
+  white-space: pre-wrap;
+  margin: 5px;
+  padding: 5px;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1.4;
+}
+#eew { 
+  margin: 0; 
+  padding: 0; 
+  font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
+}
+#status { 
+  font-size: 12px; 
+  margin-bottom: 0px; 
+}
+#copyBtn {
+  font-size: 12px;
+  padding: 2px 5px;
+  margin-bottom: 0px;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+<div id="status">更新中...</div>
+<button id="copyBtn">&nbsp;<br>　　　本文をコピー　　　<br>&nbsp;</button>
+<pre id="eew">読み込み中...</pre>
+
+<script>
+let autoCopy = false; // デフォルトはOFF
+let maxIntRegion = [];
+const izuShoto = ["伊豆大島","新島","神津島","三宅島","八丈島"];
+const ogasawara = ["小笠原"];
+const amamiGunto = ["奄美"];
+const chihoMap = {
+  "北海道地方": ["北海道"],
+  "東北地方": ["青森","岩手","宮城","秋田","山形","福島"],
+  "関東地方": ["茨城","栃木","群馬","埼玉","千葉","東京","神奈川"],
+  "甲信地方": ["山梨","長野"],
+  "北陸地方": ["新潟","富山","石川","福井"],
+  "東海地方": ["岐阜","静岡","愛知","三重"],
+  "近畿地方": ["滋賀","京都","大阪","兵庫","奈良","和歌山"],
+  "中国地方": ["鳥取","島根","岡山","広島","山口"],
+  "四国地方": ["徳島","香川","愛媛","高知"],
+  "九州地方": ["福岡","佐賀","長崎","熊本","大分","宮崎","鹿児島"],
+  "沖縄地方": ["沖縄本島","大東島","宮古島","八重山"]
+};
+// DOM
+const outputEl = document.getElementById("eew");
+const statusEl = document.getElementById("status");
+const copyBtn = document.getElementById("copyBtn");
+
+// 日時フォーマット
+function formatDate(date, format="yyyy/MM/dd HH:mm:ss"){
+  const z = n => n.toString().padStart(2,"0");
+  return format.replace("yyyy", date.getFullYear())
+               .replace("MM", z(date.getMonth()+1))
+               .replace("dd", z(date.getDate()))
+               .replace("HH", z(date.getHours()))
+               .replace("mm", z(date.getMinutes()))
+               .replace("ss", z(date.getSeconds()));
+}
+
+// scale / depth / tsunami / area text
+function scaleToText(scale){ 
+  if(scale==null||scale<0) return "不明";
+  const map = {10:'1',20:'2',30:'3',40:'4',45:'5弱',50:'5強',55:'6弱',60:'6強',70:'7'};
+  return map[scale]||'不明';
+}
+function depthToText(depth){
+  if(depth==null||depth<0) return "不明";
+  if(depth===0) return "ごく浅い";
+  return "約"+depth+"km";
+}
+function buildTsunamiText(domestic, foreign) {
+  const d = domestic;
+  const f = foreign;
+  if (d==="Warning" || d==="Watch") return "津波に関する情報を発表しています。";
+  if (d==="NonEffective") return "若干の海面変動が予想されますが、被害の心配はありません。";
+  if (d==="None") {
+    if (f==="Checking") {
+      return "この地震による国内での津波の心配はありません。海外での津波の有無は調査中です。";
+    } else if (f==="NonEffectiveNearby") {
+      return "この地震による国内での津波の心配はありませんが、震源の近傍で小さな津波の可能性があります。";
+    } else if (f==="WarningNearby") {
+      return "この地震による国内での津波の心配はありませんが、震源の近傍で津波の可能性があります。";
+    } else if (f==="WarningPacific") {
+      return "この地震による国内での津波の心配はありませんが、太平洋で津波の可能性があります。";
+    } else if (f==="WarningPacificWide") {
+      return "この地震による国内での津波の心配はありませんが、太平洋の広域で津波の可能性があります。";
+    } else if (f==="WarningIndian") {
+      return "この地震による国内での津波の心配はありませんが、インド洋で津波の可能性があります。";
+    } else if (f==="WarningIndianWide") {
+      return "この地震による国内での津波の心配はありませんが、インド洋の広域で津波の可能性があります。";
+    } else if (f==="Potential") {
+      return "この地震による国内での津波の心配はありません。海外では津波が発生する可能性がありますが、詳細は不明です。";
+    } else {
+      return "この地震による津波の心配はありません。";
+    }
+  }
+  if (d==="Checking") return "この地震による津波の有無を現在調査中です。";
+  if (d==="Unknown") return "この地震による津波の有無は不明です。";
+  return "#Tsunami:Error!";
+}
+function intensityDescription(scale){
+  return {'3':'揺れを観測しました','4':'やや強い揺れを観測しました','5弱':'強い揺れを観測しました','5強':'強い揺れを観測しました','6弱':'激しい揺れを観測しました','6強':'激しい揺れを観測しました','7':'非常に激しい揺れを観測しました'}[scale]||'';
+}
+function compareScale(a,b){const order={'1':10,'2':20,'3':30,'4':40,'5弱':45,'5強':50,'6弱':55,'6強':60,'7':70};return(order[a]||0)-(order[b]||0);}
+
+let unreportedAreas = [];
+// ★★★ buildAreaText をあなたの仕様に完全置き換え ★★★
+function buildAreaText(points,maxInt) {
+  maxIntRegion = [];
+  unreportedAreas = [];
+  let chiiki = "0";
+  if (!points || points.length === 0) return "▽震度情報不明\n";
+  const cityMaxScale = {};
+  const specialCities = ["市川市","市原市","野々市市","四日市市","田村市","町田市","十日町市","大町市",
+                         "山村市","田村市","東村山市","武蔵村山市","羽村市","大村市","余市町","市貝町",
+                         "上市町","市川三郷町","市川町","下市町","大町町","村田町","玉村町","中村区"];
+
+  points.forEach(p => {
+    if (p.isArea) {
+      chiiki = "1";
+      const scale = scaleToText(p.scale);
+      const addr = p.addr; // 例: "鳥取県西部" や "東京都千代田区"
+      let city = "";
+      if (addr.includes("京都府")) {
+        city = addr.replace("京都府","");
+      } else {
+        city = addr.replace(/^(.*?[都道府県])/, '');
+      }
+      if (p.pref==="北海道") city = city.replace("地方", "");
+      const key = `${p.pref}:${city}`;
+      if (!cityMaxScale[key] || compareScale(scale, cityMaxScale[key]) > 0) {
+        cityMaxScale[key] = scale;
+      }
+
+      const scaleText = scaleToText(p.scale);
+      if (maxInt===scaleText) {
+        if (izuShoto.includes(city)){
+          if (!maxIntRegion.includes("伊豆諸島")) maxIntRegion.push("伊豆諸島");
+        } else if (ogasawara.includes(city)){
+          if (!maxIntRegion.includes("小笠原")) maxIntRegion.push("小笠原");
+        } else if (amamiGunto.includes(city)){
+          if (!maxIntRegion.includes("奄美群島")) maxIntRegion.push("奄美群島");
+        } else {
+          const chiho = Object.keys(chihoMap).find(key =>
+            chihoMap[key].some(name => p.pref.includes(name))
+          ) || "/ERROR!/";
+          if (!maxIntRegion.includes(chiho)) maxIntRegion.push(chiho);
+        }
+      }
+    } else {
+      if(p.scale == 46){ // 未入電
+        unreportedAreas.push(p.addr); // 地域名を入れる
+        return; // この観測点の通常処理はスキップ
+      }
+
+      const scale = scaleToText(p.scale);
+      let city = null;
+
+      // 特殊地名
+      for (const s of specialCities) {
+        if (p.addr.includes(s)) {
+          city = s;
+          break;
+        }
+      }
+
+      // 通常地名
+      if (!city) {
+        const cityMatch = p.addr.match(/(.+?[市区町村])/);
+        city = cityMatch ? cityMatch[1] : p.addr;
+      }
+
+      const key = `${p.pref}:${city}`;
+      if (!cityMaxScale[key] || compareScale(scale, cityMaxScale[key]) > 0) {
+        cityMaxScale[key] = scale;
+      }
+    }
+  });
+  let maxIntRegionFormatted;
+  const chihoMapOrder = [
+    "北海道地方","東北地方","関東地方","伊豆諸島","小笠原","甲信地方","北陸地方","東海地方",
+    "近畿地方","中国地方","四国地方","九州地方","奄美群島","沖縄地方"
+  ];
+
+  if (!maxIntRegion.length || maxIntRegion.includes("/ERROR!/")) {
+    maxIntRegionFormatted = "対象なし";
+  } else {
+    maxIntRegionFormatted = maxIntRegion
+      .sort((a,b) => chihoMapOrder.indexOf(a) - chihoMapOrder.indexOf(b))
+      .join("・");
+  }
+  
+  const grouped = {};
+  Object.keys(cityMaxScale).forEach(k => {
+    const [pref, city] = k.split(':');
+    const scale = cityMaxScale[k];
+    if (!grouped[scale]) grouped[scale] = {};
+    if (!grouped[scale][pref]) grouped[scale][pref] = [];
+    grouped[scale][pref].push(city);
+  });
+
+  const prefOrder = [
+    "北海道","青森県","秋田県","岩手県","宮城県","山形県","福島県",
+    "茨城県","栃木県","群馬県","埼玉県","東京都","千葉県","神奈川県",
+    "山梨県","静岡県","愛知県","岐阜県","福井県","石川県","富山県","長野県","新潟県",
+    "滋賀県","京都府","奈良県","三重県","和歌山県","大阪府","兵庫県",
+    "鳥取県","岡山県","島根県","広島県","山口県","香川県","徳島県","高知県","愛媛県",
+    "福岡県","大分県","宮崎県","鹿児島県","熊本県","佐賀県","長崎県","沖縄県"
+  ];
+
+  let text = "";
+  Object.keys(grouped).sort((a,b)=>compareScale(b,a)).forEach(scale=>{
+    text += `\n▽震度${scale}\n`;
+    prefOrder.forEach(pref=>{
+      if(grouped[scale][pref]){
+        if (chiiki==="1") {
+          const cities = grouped[scale][pref].sort().join(" ");
+          text += `【${pref}】${cities}\n`;
+        } else {
+          const cities = grouped[scale][pref].sort().join("　");
+          text += `【${pref}】\n${cities}\n`;
+        }
+      }
+    });
+  });
+  return {intensityText: text.trim(), maxIntRegionFormatted};
+}
+// ★★★ ここまで buildAreaText ★★★
+
+let latestID = null;
+
+// buildEarthquakeBody（変更なし）
+function buildEarthquakeBody(latest){
+  const eq = latest.earthquake;
+  const h = eq.hypocenter||{};
+  const place = h.name||"(発生地点不明)";
+  const maxScale = scaleToText(eq.maxScale);
+  const magnitude = (h.magnitude!=null&&h.magnitude>=0)?h.magnitude.toFixed(1):"不明";
+  const depth = depthToText(h.depth);
+  const tsunamiText = buildTsunamiText(eq.domesticTsunami, eq.foreignTsunami);
+  const free = latest?.comments?.freeFormComment?.trim();
+  const commentText = free ? `\n\n備考：${free}` : "";  const areaResult = (latest.points && latest.points.length > 0) 
+        ? buildAreaText(latest.points, maxScale) 
+        : { intensityText: "▽震度情報不明", maxIntRegionFormatted: "対象なし" };
+
+  // 震度情報テキストだけ取り出す
+  const intensityInfo = areaResult.intensityText;
+
+  // maxIntRegionFormatted が必要なら
+  let maxIntRegionFormatted = areaResult.maxIntRegionFormatted;
+  if (maxIntRegionFormatted==="対象なし") {
+    maxIntRegionFormatted = "";
+  } else {
+    maxIntRegionFormatted = maxIntRegionFormatted + "で";
+  }
+
+  
+let over5m = "";
+if(unreportedAreas.length > 0){
+  over5m = "\n\n▽震度5弱以上と推定（未入電）\n" + unreportedAreas.join(" ");
+}
+
+  switch(latest.issue?.type){
+    case "ScalePrompt":
+      return `《震度速報　最大震度${maxScale}》
+${formatDate(new Date(eq.time),"HH時mm分")}頃、${maxIntRegionFormatted}${intensityDescription(maxScale)}。${commentText}
+
+${intensityInfo}`;
+    case "Destination":
+      return `《震源速報》
+${formatDate(new Date(eq.time),"HH時mm分")}頃、${place}で地震がありました。
+　M${magnitude}
+　震源の深さ:${depth}
+${tsunamiText}${commentText}`;
+    case "Foreign":
+      return `《遠地地震情報》
+${formatDate(new Date(eq.time),"yyyy年MM月dd日HH時mm分")}頃、${place}で規模の大きな地震がありました。
+　最大震度:${maxScale}
+　M${magnitude}
+　震源の深さ:${depth}
+${tsunamiText}${commentText}
+
+　●各地の震度情報●
+▽震度観測なし`;
+    case "DetailScale":
+    default:
+      return `《地震情報》
+${formatDate(new Date(eq.time),"yyyy年MM月dd日HH時mm分")}頃、${place}で地震がありました。
+　最大震度:${maxScale}
+　M${magnitude}
+　震源の深さ:${depth}
+${tsunamiText}${commentText}
+
+　●各地の震度情報●
+${intensityInfo}${over5m}`;
+  }
+}
+
+// updateEQ
+async function updateEQ(){
+  const url = "https://api.p2pquake.net/v2/history?codes=551&limit=1";
+  //const url = "https://script.google.com/macros/s/AKfycbzgP8R7vowRFrefHbUIkAcGt4NFjJZcuVnnpVqIjpprlCA44PtTk7ffHs-f4HP8Yk8A/exec";
+  //const url = "https://api.p2pquake.net/v2/jma/quake?limit=1&offset=2&since_date=20251212&until_date=20251212&quake_type=ScalePrompt&min_scale=40";
+  try{
+    const response = await fetch(url);
+    if(!response.ok) throw new Error(`APIアクセスエラー: ${response.status}`);
+    const data = await response.json();
+    if(!data||data.length===0){ outputEl.textContent="データが存在しません"; return; }
+
+    const messages = data.slice(0,5).map(buildEarthquakeBody);
+    outputEl.textContent = messages.join("\n\n--------------------\n\n");
+    const annTime = data[0].time;
+
+    statusEl.textContent = `最終更新: ${formatDate(new Date())}\n発表日時: ${annTime ?? "----/--/-- --:--:--"}`;
+  }catch(e){
+    outputEl.textContent="取得エラー: "+e.message;
+  }
+}
+
+// 初回と自動更新
+updateEQ();
+//setInterval(updateEQ, 2000);
+  
+// コピー機能
+copyBtn.addEventListener("click",()=>{
+  const text = outputEl.textContent;
+  navigator.clipboard.writeText(text).then(()=>{
+    const original = " \n　　　本文をコピー　　　\n ";
+    copyBtn.textContent=" \n　　　コピー完了　　　\n ";
+    setTimeout(()=>{copyBtn.textContent=original;},1500);
+  }).catch(err=>{
+    alert("コピーに失敗しました: "+err);
+  });
+});
+
+/* ================================
+   WebSocket（P2P地震情報）
+   ================================ */
+let ws;
+
+function connectWS() {
+  ws = new WebSocket("wss://api.p2pquake.net/v2/ws");
+
+  ws.onopen = () => {
+    console.log("[WS] Connected");
+    statusEl.textContent = "WebSocket 接続中（待機中）…";
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+
+      // 551（地震）以外は無視して安全に動かす
+      if (!data || data.code !== 551) return;
+
+      console.log("[WS] Earthquake data received:", data);
+
+      // 表示更新（updateEQ を通さず直接反映）
+      const text = buildEarthquakeBody(data);
+      outputEl.textContent = text;
+
+      statusEl.textContent =
+        `リアルタイム更新: ${formatDate(new Date())}\n発表日時: ${data.time}`;
+
+    } catch (e) {
+      statusEl.textContent = ("[WS] JSON parse error" + e);
+    }
+  };
+
+  ws.onerror = (err) => {
+    console.error("[WS] Error:", err);
+    statusEl.textContent = "WS エラー発生（自動再接続待ち）";
+  };
+
+  ws.onclose = () => {
+    console.warn("[WS] Closed. Reconnecting...");
+    statusEl.textContent = "WS 切断 → 再接続中…";
+
+    // 3秒後に再接続（安全）
+    setTimeout(connectWS, 3000);
+  };
+}
+
+// 起動時に WebSocket を開始
+connectWS();
+</script>
+</body>
+</html>
