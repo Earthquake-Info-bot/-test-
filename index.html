@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[ws]地震情報ビューアーv2.1.1(test)</title>
+<title>[ws]地震情報ビューアーv2.1.2(test)</title>
 <style>
 body {
   font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
@@ -398,6 +398,9 @@ function connectWS() {
 
   ws.onmessage = (event) => {
     try {
+      // 551（地震）以外は無視して安全に動かす
+      if (!data || data.code !== 551) return;
+      
       // 背景色2秒だけ変更
       document.body.classList.add("flash-bg");
       setTimeout(() => {
@@ -405,9 +408,6 @@ function connectWS() {
       }, 2000);
       
       const data = JSON.parse(event.data);
-
-      // 551（地震）以外は無視して安全に動かす
-      if (!data || data.code !== 551) return;
 
       console.log("[WS] Earthquake data received:", data);
 
