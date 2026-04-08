@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[t/ws]t地震情報ビューアーv2.1.0</title>
+<title>[ws]地震情報ビューアーv2.1.1(test)</title>
 <style>
 body {
   font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
@@ -34,7 +34,7 @@ body {
   cursor: pointer;
 }
 body.flash-bg {
-  background-color: #f3cccb !important;
+  background-color: #cbe3f3 !important;
   transition: background-color 0.3s;
 }
 </style>
@@ -388,8 +388,8 @@ function updateStatusText() {
 let ws;
 
 function connectWS() {
-  //ws = new WebSocket("wss://api.p2pquake.net/v2/ws");
-  ws = new WebSocket("wss://api-realtime-sandbox.p2pquake.net/v2/ws");
+  ws = new WebSocket("wss://api.p2pquake.net/v2/ws");
+  //ws = new WebSocket("wss://api-realtime-sandbox.p2pquake.net/v2/ws");
   
   ws.onopen = () => {
     console.log("[WS] Connected");
@@ -412,7 +412,7 @@ function connectWS() {
       console.log("[WS] Earthquake data received:", data);
 
       // 表示更新（updateEQ を通さず直接反映）
-      const text = "◤◢◤◢◤◢◤◢◤◢◤◢◤◢\n過去の情報を表示しています\n◤◢◤◢◤◢◤◢◤◢◤◢◤◢\n"+buildEarthquakeBody(data);
+      const text = buildEarthquakeBody(data);
       outputEl.textContent = text;
 
       statusEl.textContent =
