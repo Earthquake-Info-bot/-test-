@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[a]地震情報ビューアーv1.12.2</title>
+<title>[t:ws]T地震情報ビューアーv2.1.0</title>
 <style>
 body {
   font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
@@ -23,6 +23,10 @@ body {
   font-size: 12px; 
   margin-bottom: 0px; 
 }
+#ws_status { 
+  font-size: 12px; 
+  margin-bottom: 0px; 
+}
 #copyBtn {
   font-size: 12px;
   padding: 2px 5px;
@@ -33,6 +37,7 @@ body {
 </head>
 <body>
 <div id="status">更新中...</div>
+<div id="ws_status">更新中...</div>
 <button id="copyBtn">&nbsp;<br>　　　本文をコピー　　　<br>&nbsp;</button>
 <pre id="eew">読み込み中...</pre>
 
@@ -326,6 +331,7 @@ async function updateEQ(){
     const annTime = data[0].time;
 
     statusEl.textContent = `最終更新: ${formatDate(new Date())}\n発表日時: ${annTime ?? "----/--/-- --:--:--"}`;
+    ws_statusEl.textContent = `WebSocket未接続`;
   }catch(e){
     outputEl.textContent="取得エラー: "+e.message;
   }
@@ -353,11 +359,12 @@ copyBtn.addEventListener("click",()=>{
 let ws;
 
 function connectWS() {
-  ws = new WebSocket("wss://api.p2pquake.net/v2/ws");
-
+  //ws = new WebSocket("wss://api.p2pquake.net/v2/ws");
+  ws = new WebSocket("wss://api-realtime-sandbox.p2pquake.net/v2/ws");
+  
   ws.onopen = () => {
     console.log("[WS] Connected");
-    statusEl.textContent = "WebSocket 接続中（待機中）…";
+    ws_statusEl.textContent = "WebSocket接続中";
   };
 
   ws.onmessage = (event) => {
@@ -377,21 +384,21 @@ function connectWS() {
         `リアルタイム更新: ${formatDate(new Date())}\n発表日時: ${data.time}`;
 
     } catch (e) {
-      statusEl.textContent = ("[WS] JSON parse error" + e);
+      ws_statusEl.textContent = ("[WS ERROR]"+ e);
     }
   };
 
   ws.onerror = (err) => {
     console.error("[WS] Error:", err);
-    statusEl.textContent = "WS エラー発生（自動再接続待ち）";
+    ws_statusEl.textContent = "WebSocketエラー発生（自動再接続待ち）";
   };
 
   ws.onclose = () => {
     console.warn("[WS] Closed. Reconnecting...");
-    statusEl.textContent = "WS 切断 → 再接続中…";
+    ws_statusEl.textContent = "WS 切断 → 再接続中…";
 
     // 3秒後に再接続（安全）
-    setTimeout(connectWS, 3000);
+    setTimeout(connectWS, 1500);
   };
 }
 
