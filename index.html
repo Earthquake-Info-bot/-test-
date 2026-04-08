@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[t:ws]T地震情報ビューアーv2.1.0</title>
+<title>[t:ws]t地震情報ビューアーv2.1.0</title>
 <style>
 body {
   font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
@@ -32,6 +32,10 @@ body {
   padding: 2px 5px;
   margin-bottom: 0px;
   cursor: pointer;
+}
+body.flash-bg {
+  background-color: #f3cccb !important;
+  transition: background-color 0.3s;
 }
 </style>
 </head>
@@ -394,6 +398,12 @@ function connectWS() {
 
   ws.onmessage = (event) => {
     try {
+      // 背景色2秒だけ変更
+      document.body.classList.add("flash-bg");
+      setTimeout(() => {
+        document.body.classList.remove("flash-bg");
+      }, 2000);
+      
       const data = JSON.parse(event.data);
 
       // 551（地震）以外は無視して安全に動かす
@@ -402,7 +412,7 @@ function connectWS() {
       console.log("[WS] Earthquake data received:", data);
 
       // 表示更新（updateEQ を通さず直接反映）
-      const text = buildEarthquakeBody(data);
+      const text = "◤◢◤◢◤◢◤◢◤◢◤◢◤◢\n過去の情報を表示しています\n◤◢◤◢◤◢◤◢◤◢◤◢◤◢\n"+buildEarthquakeBody(data);
       outputEl.textContent = text;
 
       statusEl.textContent =
