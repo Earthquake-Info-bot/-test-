@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[t:ws]t地震情報ビューアーv2.1.0</title>
+<title>[t:ws]T地震情報ビューアーv2.1.0</title>
 <style>
 body {
   font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
@@ -357,6 +357,30 @@ copyBtn.addEventListener("click",()=>{
 /* ================================
    WebSocket（P2P地震情報）
    ================================ */
+let dotVisible = true;
+let blinkTimer = null;
+
+function startBlink() {
+  if (blinkTimer) return; // 二重起動防止
+
+  blinkTimer = setInterval(() => {
+    dotVisible = !dotVisible;
+    updateStatusText();
+  }, 500);
+}
+
+function stopBlink() {
+  clearInterval(blinkTimer);
+  blinkTimer = null;
+  dotVisible = false;
+  updateStatusText();
+}
+
+function updateStatusText() {
+  const dot = dotVisible ? "●" : "　"; // ← 全角スペースでズレ防止
+  ws_statusEl.textContent = `WebSocket接続中${dot}`;
+}
+  
 let ws;
 
 function connectWS() {
@@ -365,7 +389,7 @@ function connectWS() {
   
   ws.onopen = () => {
     console.log("[WS] Connected");
-    ws_statusEl.textContent = "WebSocket接続中";
+    startBlink();
   };
 
   ws.onmessage = (event) => {
@@ -382,7 +406,7 @@ function connectWS() {
       outputEl.textContent = text;
 
       statusEl.textContent =
-        `リアルタイム更新: ${formatDate(new Date())}\n発表日時: ${data.time}`;
+        `リアタイ更新: ${formatDate(new Date())}\n発表日時: ${data.time}`;
 
     } catch (e) {
       ws_statusEl.textContent = ("[WS ERROR]"+ e);
@@ -391,11 +415,13 @@ function connectWS() {
 
   ws.onerror = (err) => {
     console.error("[WS] Error:", err);
+    stopBlink();
     ws_statusEl.textContent = "WebSocketエラー発生（自動再接続待ち）";
   };
 
   ws.onclose = () => {
     console.warn("[WS] Closed. Reconnecting...");
+    stopBlink();
     ws_statusEl.textContent = "WS 切断 → 再接続中…";
 
     // 3秒後に再接続（安全）
