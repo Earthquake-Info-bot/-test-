@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[ws]地震情報ビューアーv2.1.4(test)</title>
+<title>[ws]地震情報ビューアーv2.2.1(test)</title>
 <style>
 body {
   font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
@@ -42,7 +42,7 @@ body.flash-bg {
 <body>
 <div id="status">更新中...</div>
 <div id="ws_status">更新中...</div>
-<button id="copyBtn">&nbsp;<br>　　　本文をコピー　　　<br>&nbsp;</button>
+<button id="copyBtn">&nbsp;<br>　　　本文をコピー　　　<br>&nbsp;</button><label><input type="checkbox" id="modeSwitch">WebSocketを使用</label>
 <pre id="eew">読み込み中...</pre>
 
 <script>
@@ -342,9 +342,16 @@ async function updateEQ(){
   }
 }
 
+let useWS = false;
+  
 // 初回と自動更新
 updateEQ();
-//setInterval(updateEQ, 2000);
+  
+setInterval(() => {
+  if (!useWS) {
+    updateEQ();
+  }
+}, 2000);
   
 // コピー機能
 copyBtn.addEventListener("click",()=>{
@@ -386,6 +393,7 @@ function updateStatusText() {
 }
   
 let ws;
+const checkbox = document.getElementById("modeSwitch");
 
 function connectWS() {
   ws = new WebSocket("wss://api.p2pquake.net/v2/ws");
@@ -432,15 +440,37 @@ function connectWS() {
   ws.onclose = () => {
     console.warn("[WS] Closed. Reconnecting...");
     stopBlink();
+
+    if (!useWS) {
+      ws_statusEl.textContent = "WebSocket停止中";
+      return;
+    }
+    
     ws_statusEl.textContent = "WebSocket切断・再接続中…";
 
-    // 3秒後に再接続（安全）
+    // 1.5秒後に再接続（安全）
     setTimeout(connectWS, 1500);
   };
 }
 
-// 起動時に WebSocket を開始
-connectWS();
+function stopWS() {
+  useWS = false;
+
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+}
+
+checkbox.addEventListener("change", () => {
+  if (checkbox.checked) {
+    useWS = true;
+    connectWS();
+  } else {
+    stopWS();
+    startPolling(); // API側
+  }
+});
 </script>
 </body>
 </html>
