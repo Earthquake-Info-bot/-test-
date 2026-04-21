@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[ws]地震情報ビューアーv2.3.1(test)</title>
+<title>[ws]地震情報ビューアーv2.3.2(test)</title>
 <style>
 body {
   font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
@@ -18,14 +18,19 @@ body {
   margin: 0; 
   padding: 0; 
   font-family:"Yu Gothic","YuGothic","メイリオ",sans-serif;
+  white-space: pre-wrap;
+  word-break: break-all;      /* ←これが一番効く */
+  overflow-wrap: anywhere;   /* ←保険 */
 }
 #status { 
   font-size: 12px; 
   margin-bottom: 0px; 
+  white-space: pre-wrap;
 }
 #ws_status { 
   font-size: 12px; 
   margin-bottom: 0px; 
+  white-space: pre-wrap;
 }
 #copyBtn {
   font-size: 12px;
