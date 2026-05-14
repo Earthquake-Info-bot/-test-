@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[β版]地震履歴 vT2.1.1</title>
+<title>[β版]地震履歴 vT2.2.1</title>
 
 <style>
 :root {
@@ -221,6 +221,18 @@ function formatTimeSplit(t) {
   return `${yyyy}/${MM}/${dd}<br>${HH}:${mm}`;
 }
 
+function createEventID(time) {
+  const d = new Date(time);
+
+  const yyyy = d.getFullYear();
+  const MM = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const HH = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+
+  return `${yyyy}${MM}${dd}${HH}${mm}`;
+}
+
 function formatDepth(d) {
   if (d === -1) return "不明";
   if (d === 0) return "ごく浅い";
@@ -234,8 +246,8 @@ function formatMagnitude(m) {
 
 async function updateEarthquakes() {
   try {
-    const res = await fetch("https://api.p2pquake.net/v2/history?codes=551&limit=50");
-    //const res = await fetch("https://api-v2-sandbox.p2pquake.net/v2/history?codes=551&limit=50");
+    //const res = await fetch("https://api.p2pquake.net/v2/history?codes=551&limit=50");
+    const res = await fetch("https://api-v2-sandbox.p2pquake.net/v2/history?codes=551&limit=50");
     //const res = await fetch("https://api.p2pquake.net/v2/jma/quake?limit=50&offset=110&order=-1&since_date=20240101&until_date=20240101");
  
     const data = await res.json();
@@ -250,14 +262,67 @@ async function updateEarthquakes() {
 }
 
 function render() {
-  const list = latestData;
 
+  // ===== eventIDごとに統合 =====
+  const mergedMap = new Map();
+
+  // 新しい順
+  const sorted = [...latestData].sort((a, b) => {
+    return new Date(b.time) - new Date(a.time);
+  });
+
+  for (const eq of sorted) {
+
+    const eventId = createEventID(eq.earthquake.time);
+
+    // 初期化
+    if (!mergedMap.has(eventId)) {
+      mergedMap.set(eventId, {
+        time: eq.earthquake.time,
+        maxScale: null,
+        hypoName: null,
+        magnitude: null,
+        depth: null,
+        type: null
+      });
+    }
+
+    const target = mergedMap.get(eventId);
+
+    // 新しい情報で更新
+    target.time = eq.earthquake.time;
+    target.type = eq.issue.type;
+
+    switch (eq.issue.type) {
+      // 震度速報
+      case "ScalePrompt":
+        target.maxScale = eq.earthquake.maxScale;
+        break;
+      // 震源速報
+      case "Destination":
+        target.hypoName = eq.earthquake.hypocenter?.name;
+        target.magnitude = eq.earthquake.hypocenter?.magnitude;
+        target.depth = eq.earthquake.hypocenter?.depth;
+        break;
+      // その他（詳細・遠地など）
+      default:
+        target.maxScale = eq.earthquake.maxScale;
+        target.hypoName = eq.earthquake.hypocenter?.name;
+        target.magnitude = eq.earthquake.hypocenter?.magnitude;
+        target.depth = eq.earthquake.hypocenter?.depth;
+        break;
+    }
+  }
+
+  const list = Array.from(mergedMap.values());
+  // 表示は新しい地震順
+  list.sort((a, b) => {
+    return new Date(b.time) - new Date(a.time);
+  });
+
+  // ===== 描画 =====
   const container = document.getElementById("list");
   container.innerHTML = "";
-
-  list.sort((a, b) => {
-    return new Date(b.earthquake.time) - new Date(a.earthquake.time);
-  });
 
   const header = document.createElement("div");
   header.className = "item header";
@@ -270,32 +335,41 @@ function render() {
 
     const isFirst = count === 0;
 
+    // ===== typeごとの表示 =====
+    let scaleText = eq.maxScale != null ? formatScale(eq.maxScale) : "";
+    let placeText = eq.hypoName || "震源調査中";
+    let subText =
+      (eq.magnitude != null || eq.depth != null)
+        ? `${formatMagnitude(eq.magnitude)}<br>深さ ${formatDepth(eq.depth)}`
+        : "";
+
     const div = document.createElement("div");
     div.className = "item";
 
     div.innerHTML = `
-      <div class="scale ${getScaleClass(eq.earthquake.maxScale)}">
-        ${formatScale(eq.earthquake.maxScale)}
+      <div class="scale ${getScaleClass(eq.maxScale)}">
+        ${scaleText}
       </div>
+
       <div class="info">
-        ${isFirst ? formatTimeSplit(eq.earthquake.time) : formatTime(eq.earthquake.time)}<br>
-        <span class="place">${eq.earthquake.hypocenter.name}</span>
+        ${isFirst ? formatTimeSplit(eq.time) : formatTime(eq.time)}<br>
+        <span class="place">${placeText}</span>
       </div>
+
       <div class="sub">
-        ${formatMagnitude(eq.earthquake.hypocenter.magnitude)}<br>
-        深さ ${formatDepth(eq.earthquake.hypocenter.depth)}
+        ${subText}
       </div>
     `;
 
     container.appendChild(div);
 
     count++;
-    if (count >= currentItems) break; // ←ここ変更
+    if (count >= currentItems) break;
   }
 }
 
 updateEarthquakes();
-setInterval(updateEarthquakes, 5000);
+//setInterval(updateEarthquakes, 5000);
 let resizeTimer;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
