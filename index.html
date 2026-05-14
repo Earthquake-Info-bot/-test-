@@ -250,6 +250,8 @@ async function updateEarthquakes() {
 }
 
 function render() {
+  const isFirst = count === 0;
+  
   const list = latestData;
 
   const container = document.getElementById("list");
