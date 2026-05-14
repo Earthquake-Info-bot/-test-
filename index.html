@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[β版]地震履歴 vT2.2.1</title>
+<title>[β版]地震履歴 vT2.2.2</title>
 
 <style>
 :root {
@@ -369,7 +369,7 @@ function render() {
 }
 
 updateEarthquakes();
-//setInterval(updateEarthquakes, 5000);
+setInterval(updateEarthquakes, 5000);
 let resizeTimer;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
