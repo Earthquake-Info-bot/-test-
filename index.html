@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[β版]地震履歴 vT2.3.2</title>
+<title>[β版]地震履歴 vT2.3.3</title>
 
 <style>
 :root {
@@ -149,9 +149,9 @@ body {
 }
 
 .badge {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 999px;
+  font-size: 12px;        /* 10 → 少し大きく */
+  padding: 3px 8px;       /* 横を少し広げる */
+  border-radius: 6px;     /* 999px → 角丸四角に変更 */
   font-weight: bold;
   line-height: 1;
   white-space: nowrap;
@@ -405,11 +405,11 @@ function render() {
       </div>
 
       <div class="info">
-        ${isFirst ? formatTimeSplit(eq.time) : formatTime(eq.time)}<br>
-        <span class="place-row">
-          <span class="place">${placeText}</span>
+        <div>
+          ${isFirst ? formatTimeSplit(eq.time) : formatTime(eq.time)}
           ${badge ? `<span class="badge ${badgeClass}">${badge}</span>` : ""}
-        </span>
+        </div>
+        <span class="place">${placeText}</span>
       </div>
 
       <div class="sub">
@@ -425,7 +425,7 @@ function render() {
 }
 
 updateEarthquakes();
-setInterval(updateEarthquakes, 5000);
+//setInterval(updateEarthquakes, 5000);
 let resizeTimer;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
