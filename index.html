@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[β版]地震履歴 vT2.3.3</title>
+<title>[β版]地震履歴 vT2.3.4</title>
 
 <style>
 :root {
@@ -149,14 +149,13 @@ body {
 }
 
 .badge {
-  font-size: 12px;        /* 10 → 少し大きく */
-  padding: 3px 8px;       /* 横を少し広げる */
-  border-radius: 6px;     /* 999px → 角丸四角に変更 */
-  font-weight: bold;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 6px;
   line-height: 1;
-  white-space: nowrap;
   display: inline-flex;
   align-items: center;
+  transform: scale(0.95); /* ←微調整（効く） */
 }
 
 .badge.scale {
@@ -425,7 +424,7 @@ function render() {
 }
 
 updateEarthquakes();
-//setInterval(updateEarthquakes, 5000);
+setInterval(updateEarthquakes, 5000);
 let resizeTimer;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
