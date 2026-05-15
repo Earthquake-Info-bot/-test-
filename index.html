@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[β版]地震履歴 vT2.3.5</title>
+<title>[β版]地震履歴 vT2.3.6</title>
 
 <style>
 :root {
@@ -156,12 +156,16 @@ body {
 
 .badge {
   font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 6px;
-  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 999px;
+
   display: inline-flex;
   align-items: center;
-  transform: scale(0.95); /* ←微調整（効く） */
+  justify-content: center;
+
+  line-height: 1;
+  height: 1.4em;      /* ←これが効く（縦暴れ防止） */
+  box-sizing: border-box;
 }
 
 .badge.scale {
