@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[β版]地震履歴 vT2.3.4</title>
+<title>[β版]地震履歴 vT2.3.5</title>
 
 <style>
 :root {
@@ -143,6 +143,12 @@ body {
 }
 
 .place-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.time-row {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -404,8 +410,10 @@ function render() {
       </div>
 
       <div class="info">
-        <div>
-          ${isFirst ? formatTimeSplit(eq.time) : formatTime(eq.time)}
+        <div class="time-row">
+          <span class="time">
+            ${isFirst ? formatTimeSplit(eq.time) : formatTime(eq.time)}
+          </span>
           ${badge ? `<span class="badge ${badgeClass}">${badge}</span>` : ""}
         </div>
         <span class="place">${placeText}</span>
